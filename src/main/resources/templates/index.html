@@ -328,189 +328,303 @@
         // Load Ledger Page
         function loadLedgerData() {
             showLoading();
+            $('#mainContent').html('<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Loading ledger data...</p></div>');
 
             // Update the URL without reloading the page
             window.history.pushState({}, '', '/ledgers');
 
+            // Destroy any existing DataTable instance before loading new HTML
+            if ($.fn.DataTable.isDataTable('#ledgerTable')) {
+                $('#ledgerTable').DataTable().destroy();
+            }
+
             fetch("/ledgers")
                 .then(res => {
                     if (!res.ok) {
-                        throw new Error('Network response was not ok');
+                        throw new Error(`HTTP error! status: ${res.status}`);
                     }
                     return res.text();
                 })
                 .then(html => {
-                    // Clear existing content and destroy any existing DataTable
+                    // Clear existing content first
                     $('#mainContent').empty();
                     
                     // Add the new HTML content
                     $('#mainContent').html(html);
                     
-                    // Wait for the DOM to be updated
-                    setTimeout(() => {
-                        // Initialize DataTables after content is loaded
-                        if ($.fn.DataTable.isDataTable('#ledgerTable')) {
-                            $('#ledgerTable').DataTable().destroy();
-                        }
-                        
-                        var table = $('#ledgerTable').DataTable({
-                            dom: 'Bfrtip',
-                            buttons: [
-                                {
-                                    extend: 'excelHtml5',
-                                    exportOptions: {
-                                        columns: ':visible',
-                                        modifier: {
-                                            search: 'applied',
-                                            order: 'applied'
-                                        }
+                    // Remove any existing event handlers
+                    $('#ledgerTable').off();
+                    $('#ledgerNameSearch').off();
+                    $('#groupNameSearch').off();
+                    $('#subGroupNameSearch').off();
+                    $('#apVersionDropdown').off();
+
+                    // Initialize DataTable with optimized settings
+                    var table = $('#ledgerTable').DataTable({
+                        dom: 'Bfrtip',
+                        buttons: [
+                            {
+                                extend: 'excelHtml5',
+                                exportOptions: {
+                                    columns: ':visible',
+                                    modifier: {
+                                        search: 'applied',
+                                        order: 'applied'
                                     }
                                 }
-                            ],
-                            scrollX: true,
-                            paging: true,
-                            pageLength: 10,
-                            bInfo: true,
-                            searching: true,
-                            autoWidth: false,
-                            columnDefs: [
-                                { width: "150px", targets: 1 },  // Ledger Name
-                                { width: "150px", targets: 3 },  // Group Name
-                                { width: "150px", targets: 5 },  // SubGroup Name
-                                { width: "200px", targets: 21 },  // Formula
-                                { 
-                                    targets: [0, 1, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28],
-                                    className: 'editable'
+                            }
+                        ],
+                        destroy: true,   // Always destroy and re-create
+                        deferRender: true,
+                        orderClasses: false,
+                        processing: true,
+                        scrollX: true,
+                        scrollY: '50vh',
+                        scroller: true,
+                        paging: true,
+                        pageLength: 25,
+                        bInfo: true,
+                        searching: true,
+                        autoWidth: false,
+                        columnDefs: [
+                            { width: "150px", targets: 1 },  // Ledger Name
+                            { width: "150px", targets: 3 },  // Group Name
+                            { width: "150px", targets: 5 },  // SubGroup Name
+                            { width: "200px", targets: 21 }  // Formula
+                        ],
+                        initComplete: function () {
+                            var api = this.api(); // Use DataTables API instance
+                            console.log('DataTable columns:', api.columns().count());
+                            function debounce(func, wait) {
+                                let timeout;
+                                return function executedFunction(...args) {
+                                    const context = this;
+                                    const later = function() {
+                                        clearTimeout(timeout);
+                                        func.apply(context, args); // Preserve 'this' context
+                                    };
+                                    clearTimeout(timeout);
+                                    timeout = setTimeout(later, wait);
+                                };
+                            }
+
+                            $('#ledgerNameSearch').off().on('keyup', debounce(function (e) {
+                                var val = this.value;
+                                console.log('Ledger Name search event:', e, 'this:', this, 'value:', val);
+                                try {
+                                    api.column(1).search(val).draw();
+                                } catch (err) {
+                                    console.error('Ledger Name search error:', err);
                                 }
-                            ],
-                            language: {
-                                search: "Search:",
-                                paginate: {
-                                    first: "First",
-                                    last: "Last",
-                                    next: "Next",
-                                    previous: "Previous"
+                            }, 300));
+
+                            $('#groupNameSearch').off().on('keyup', debounce(function (e) {
+                                var val = this.value;
+                                console.log('Group Name search event:', e, 'this:', this, 'value:', val);
+                                try {
+                                    api.column(3).search(val).draw();
+                                } catch (err) {
+                                    console.error('Group Name search error:', err);
                                 }
+                            }, 300));
+
+                            $('#subGroupNameSearch').off().on('keyup', debounce(function (e) {
+                                var val = this.value;
+                                console.log('SubGroup Name search event:', e, 'this:', this, 'value:', val);
+                                try {
+                                    api.column(5).search(val).draw();
+                                } catch (err) {
+                                    console.error('SubGroup Name search error:', err);
+                                }
+                            }, 300));
+
+                            $('#apVersionDropdown').off().on('change', function (e) {
+                                var val = this.value;
+                                console.log('AP Version search event:', e, 'this:', this, 'value:', val);
+                                try {
+                                    api.column(26).search(val).draw();
+                                } catch (err) {
+                                    console.error('AP Version search error:', err);
+                                }
+                            });
+                        }
+                    });
+
+                    // Move buttons to the export container
+                    table.buttons().container().appendTo('#exportButtonsContainer');
+
+                    // Handle edit button clicks
+                    $('#ledgerTable').on('click', '.edit-btn', function() {
+                        const ledgerId = $(this).data('id');
+                        const row = table.row($(this).closest('tr')).data();
+                        
+                        // Clone the add ledger modal
+                        const editModal = $('#addLedgerModal').clone();
+                        editModal.attr('id', 'editLedgerModal');
+                        editModal.find('.modal-title').text('Edit Ledger');
+                        
+                        // Initialize wizard functionality for the edit modal
+                        let currentStep = 1;
+                        const totalSteps = 3;
+
+                        function updateWizardUI() {
+                            // Update progress bar
+                            const progress = (currentStep / totalSteps) * 100;
+                            editModal.find('.progress-bar').css('width', progress + '%');
+
+                            // Update navigation pills
+                            editModal.find('.nav-pills .nav-link').removeClass('active');
+                            editModal.find(`.nav-pills .nav-link[href="#step${currentStep}"]`).addClass('active');
+
+                            // Update tab content
+                            editModal.find('.tab-pane').removeClass('show active');
+                            editModal.find(`#step${currentStep}`).addClass('show active');
+
+                            // Update buttons
+                            editModal.find('#prevBtn').toggle(currentStep > 1);
+                            editModal.find('#nextBtn').toggle(currentStep < totalSteps);
+                            editModal.find('#saveLedgerBtn').toggle(currentStep === totalSteps);
+                        }
+
+                        // Bind next button
+                        editModal.find('#nextBtn').off().on('click', function() {
+                            if (currentStep < totalSteps) {
+                                currentStep++;
+                                updateWizardUI();
                             }
                         });
 
-                        // Move buttons to the export container
-                        table.buttons().container().appendTo('#exportButtonsContainer');
-
-                        // Initialize search functionality
-                        $('#ledgerNameSearch').on('keyup', function () {
-                            table.column(1).search(this.value).draw();
+                        // Bind previous button
+                        editModal.find('#prevBtn').off().on('click', function() {
+                            if (currentStep > 1) {
+                                currentStep--;
+                                updateWizardUI();
+                            }
                         });
 
-                        $('#groupNameSearch').on('keyup', function () {
-                            table.column(3).search(this.value).draw();
-                        });
+                        // Initialize wizard UI
+                        updateWizardUI();
+                        
+                        // Populate form fields with row data
+                        // Basic Info (Step 1)
+                        editModal.find('#ledgerName').val(row[1]); // Ledger Name
+                        editModal.find('#groupId').val(row[2]); // Group ID
+                        editModal.find('#groupName').val(row[3]); // Group Name
+                        editModal.find('#subGroupId').val(row[4]); // SubGroup ID
+                        editModal.find('#subGroupName').val(row[5]); // SubGroup Name
+                        editModal.find('#code').val(row[11]); // Code
+                        editModal.find('#version').val(row[10]); // Version
+                        editModal.find('#apVersion').val(row[26]); // AP Version
+                        editModal.find('#ledgerHeader').val(row[28]); // Ledger Header
 
-                        $('#subGroupNameSearch').on('keyup', function () {
-                            table.column(5).search(this.value).draw();
-                        });
+                        // Type & Status (Step 2)
+                        editModal.find('#isActive').val(row[7].toLowerCase()); // Is Active
+                        editModal.find('#isDeleted').val(row[8].toLowerCase()); // Is Deleted
+                        editModal.find('#isGroup').val(row[12].toLowerCase()); // Is Group
+                        editModal.find('#isLedger').val(row[13].toLowerCase()); // Is Ledger
+                        editModal.find('#isSubGroup').val(row[14].toLowerCase()); // Is SubGroup
+                        editModal.find('#isEditable').val(row[22].toLowerCase()); // Is Editable
+                        editModal.find('#isOptional').val(row[25].toLowerCase()); // Is Optional
 
-                        $('#apVersionDropdown').on('change', function () {
-                            table.column(26).search(this.value).draw();
-                        });
+                        // Additional Info (Step 3)
+                        editModal.find('#createdBy').val(row[15]); // Created By
+                        editModal.find('#updatedBy').val(row[16]); // Updated By
+                        // Format dates for datetime-local input
+                        const createdDate = new Date(row[6]);
+                        const updatedDate = new Date(row[9]);
+                        editModal.find('#createdDate').val(createdDate.toISOString().slice(0, 16));
+                        editModal.find('#updatedDate').val(updatedDate.toISOString().slice(0, 16));
+                        editModal.find('#ledgerTypeId').val(row[17]); // Ledger Type ID
+                        editModal.find('#parentId').val(row[18]); // Parent ID
+                        editModal.find('#tbMenuId').val(row[19]); // Menu ID
+                        editModal.find('#serialNumber').val(row[20]); // Serial Number
+                        editModal.find('#formula').val(row[21]); // Formula
+                        editModal.find('#depreciationLedgerId').val(row[23]); // Depreciation Ledger ID
+                        editModal.find('#accumulatedDepreciationId').val(row[24]); // Accumulated Depreciation ID
+                        editModal.find('#fsaAreaId').val(row[27]); // FSA Area ID
 
-                        // Add inline editing functionality
-                        $('#ledgerTable').on('click', 'td.editable', function() {
-                            var cell = $(this);
-                            var column = table.cell(this).index().column;
-                            var row = table.cell(this).index().row;
-                            var data = table.cell(this).data();
-                            
-                            cell.addClass('editing');
-                            
-                            // Create input for all editable columns
-                            var input = $('<input type="text" class="editable-input">');
-                            input.val(data);
+                        // Update save button to handle edit
+                        editModal.find('#saveLedgerBtn').off().on('click', function() {
+                            const now = new Date();
+                            function getValueOrNull(selector) {
+                                const val = editModal.find(selector).val();
+                                return val === '' ? null : val;
+                            }
+                            const formData = {
+                                id: ledgerId,
+                                ledgerName: getValueOrNull('#ledgerName'),
+                                groupId: getValueOrNull('#groupId'),
+                                groupName: getValueOrNull('#groupName'),
+                                subGroupId: getValueOrNull('#subGroupId'),
+                                subGroupName: getValueOrNull('#subGroupName'),
+                                code: getValueOrNull('#code'),
+                                version: getValueOrNull('#version'),
+                                apVersion: getValueOrNull('#apVersion'),
+                                ledgerHeader: getValueOrNull('#ledgerHeader'),
+                                isActive: editModal.find('#isActive').val() === 'true',
+                                isDeleted: editModal.find('#isDeleted').val() === 'true',
+                                isGroup: editModal.find('#isGroup').val() === 'true',
+                                isLedger: editModal.find('#isLedger').val() === 'true',
+                                isSubGroup: editModal.find('#isSubGroup').val() === 'true',
+                                isEditable: editModal.find('#isEditable').val() === 'true',
+                                isOptional: editModal.find('#isOptional').val() === 'true',
+                                createdBy: getValueOrNull('#createdBy'),
+                                updatedBy: getValueOrNull('#updatedBy'),
+                                ledgerTypeId: getValueOrNull('#ledgerTypeId'),
+                                parentId: getValueOrNull('#parentId'),
+                                tbMenuId: getValueOrNull('#tbMenuId'),
+                                serialNumber: getValueOrNull('#serialNumber'),
+                                formula: getValueOrNull('#formula'),
+                                depreciationLedgerId: getValueOrNull('#depreciationLedgerId'),
+                                accumulatedDepreciationId: getValueOrNull('#accumulatedDepreciationId'),
+                                fsaAreaId: getValueOrNull('#fsaAreaId'),
+                                createdDate: row[6], // Keep original created date
+                                updatedDate: now.toISOString() // Set current date/time for updated date
+                            };
 
-                            cell.html(input);
-                            input.focus();
-
-                            // Handle input completion
-                            function completeEdit() {
-                                var newValue = input.val();
-                                cell.removeClass('editing');
-                                
-                                // Check if value actually changed
-                                if (newValue === data) {
-                                    // No change, just restore the original value
-                                    cell.html(data);
-                                    return;
-                                }
-                                
-                                // Log the data being sent
-                                var requestData = {
-                                    id: table.cell(row, 0).data(),
-                                    column: table.column(column).header().textContent,
-                                    value: newValue
-                                };
-                                console.log('Sending update request:', requestData);
-                                
-                                // Make the AJAX call to update the backend
-                                $.ajax({
-                                    url: '/api/ledger/update',
-                                    method: 'POST',
-                                    contentType: 'application/json',
-                                    data: JSON.stringify(requestData),
-                                    success: function(response) {
-                                        console.log('Update response:', response);
-                                        if (response.success) {
-                                            // Update the cell data only if the backend update was successful
-                                            table.cell(cell).data(newValue);
-                                            // Show success message
-                                            Swal.fire({
-                                                icon: 'success',
-                                                title: 'Success!',
-                                                text: 'Update successful!',
-                                                timer: 1500,
-                                                showConfirmButton: false
-                                            });
-                                        } else {
-                                            // Revert the change if the backend update failed
-                                            table.cell(cell).data(data);
-                                            Swal.fire({
-                                                icon: 'error',
-                                                title: 'Error!',
-                                                text: 'Update failed: ' + (response.message || 'Unknown error')
-                                            });
-                                        }
-                                    },
-                                    error: function(xhr, status, error) {
-                                        console.error('Update error:', {
-                                            status: status,
-                                            error: error,
-                                            response: xhr.responseText
+                            // Make AJAX call to update ledger
+                            $.ajax({
+                                url: '/api/ledger/update',
+                                method: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify(formData),
+                                success: function(response) {
+                                    if (response.success) {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Success!',
+                                            text: 'Ledger updated successfully!',
+                                            timer: 1500,
+                                            showConfirmButton: false
+                                        }).then(() => {
+                                            editModal.modal('hide');
+                                            loadLedgerData(); // Reload the table
                                         });
-                                        // Revert the change if there was an error
-                                        table.cell(cell).data(data);
+                                    } else {
                                         Swal.fire({
                                             icon: 'error',
                                             title: 'Error!',
-                                            text: 'Update failed: ' + (xhr.responseJSON?.message || error)
+                                            text: 'Update failed: ' + (response.message || 'Unknown error')
                                         });
                                     }
-                                });
-                            }
-
-                            // Handle Enter key and blur
-                            input.on('keypress', function(e) {
-                                if (e.which === 13) {
-                                    completeEdit();
+                                },
+                                error: function(xhr, status, error) {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error!',
+                                        text: 'Update failed: ' + (xhr.responseJSON?.message || error)
+                                    });
                                 }
                             });
-
-                            input.on('blur', function() {
-                                completeEdit();
-                            });
                         });
-                    }, 100);
+
+                        // Show the modal
+                        editModal.modal('show');
+                    });
                 })
                 .catch(error => {
-                    $('#mainContent').html('<p class="text-danger">Failed to load Ledger Data: ' + error.message + '</p>');
+                    console.error('Error loading ledger data:', error);
+                    $('#mainContent').html('<div class="alert alert-danger">Failed to load Ledger Data: ' + error.message + '</div>');
                 })
                 .finally(() => {
                     hideLoading();
@@ -527,6 +641,9 @@
         $('#loadTransferData').on('click', function (e) {
             e.preventDefault();
             showLoading();
+
+            // Update the URL without reloading the page
+            window.history.pushState({}, '', '/transfer');
 
             fetch("/api/config/is-configured")
                 .then(res => res.json())
@@ -559,6 +676,9 @@
         $('#loadSettings').on('click', function (e) {
             e.preventDefault();
             showLoading();
+
+            // Update the URL without reloading the page
+            window.history.pushState({}, '', '/settings');
 
             const query = window.location.search;
             fetch("/settings" + query)

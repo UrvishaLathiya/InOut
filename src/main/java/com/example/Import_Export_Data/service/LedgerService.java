@@ -263,4 +263,60 @@ public class LedgerService {
 
         return dto;
     }
+
+    @Transactional
+    public boolean updateLedger(Map<String, Object> request) {
+        if (!request.containsKey("id") || request.get("id") == null) {
+            return false;
+        }
+        Integer id = Integer.parseInt(request.get("id").toString());
+        Optional<Ledger> optionalLedger = ledgerRepository.findById(id);
+        if (optionalLedger.isEmpty()) {
+            return false;
+        }
+        Ledger ledger = optionalLedger.get();
+
+        // Update all fields if present in request
+        if (request.containsKey("ledgerName")) ledger.setLedgerName((String) request.get("ledgerName"));
+        if (request.containsKey("groupId")) ledger.setGroupId(request.get("groupId") != null ? Integer.parseInt(request.get("groupId").toString()) : null);
+        if (request.containsKey("groupName")) ledger.setGroupName((String) request.get("groupName"));
+        if (request.containsKey("subGroupId")) ledger.setSubGroupId(request.get("subGroupId") != null ? Integer.parseInt(request.get("subGroupId").toString()) : null);
+        if (request.containsKey("subGroupName")) ledger.setSubGroupName((String) request.get("subGroupName"));
+        if (request.containsKey("code")) ledger.setCode((String) request.get("code"));
+        if (request.containsKey("version")) ledger.setVersion(request.get("version") != null ? Integer.parseInt(request.get("version").toString()) : null);
+        if (request.containsKey("apVersion")) ledger.setApVersion(request.get("apVersion") != null ? Integer.parseInt(request.get("apVersion").toString()) : null);
+        if (request.containsKey("ledgerHeader")) ledger.setLedgerHeader((String) request.get("ledgerHeader"));
+        if (request.containsKey("isActive")) ledger.setActive(request.get("isActive") != null && Boolean.parseBoolean(request.get("isActive").toString()));
+        if (request.containsKey("isDeleted")) ledger.setDeleted(request.get("isDeleted") != null && Boolean.parseBoolean(request.get("isDeleted").toString()));
+        if (request.containsKey("isGroup")) ledger.setGroup(request.get("isGroup") != null && Boolean.parseBoolean(request.get("isGroup").toString()));
+        if (request.containsKey("isLedger")) ledger.setLedger(request.get("isLedger") != null && Boolean.parseBoolean(request.get("isLedger").toString()));
+        if (request.containsKey("isSubGroup")) ledger.setSubGroup(request.get("isSubGroup") != null && Boolean.parseBoolean(request.get("isSubGroup").toString()));
+        if (request.containsKey("isEditable")) ledger.setEditable(request.get("isEditable") != null && Boolean.parseBoolean(request.get("isEditable").toString()));
+        if (request.containsKey("isOptional")) ledger.setOptional(request.get("isOptional") != null && Boolean.parseBoolean(request.get("isOptional").toString()));
+        if (request.containsKey("createdBy")) ledger.setCreatedBy(request.get("createdBy") != null ? Integer.parseInt(request.get("createdBy").toString()) : null);
+        if (request.containsKey("updatedBy")) ledger.setUpdatedBy(request.get("updatedBy") != null ? Integer.parseInt(request.get("updatedBy").toString()) : null);
+        if (request.containsKey("ledgerTypeId")) ledger.setLedgerTypeId(request.get("ledgerTypeId") != null ? Short.parseShort(request.get("ledgerTypeId").toString()) : null);
+        if (request.containsKey("parentId")) ledger.setParentId(request.get("parentId") != null ? Integer.parseInt(request.get("parentId").toString()) : null);
+        if (request.containsKey("tbMenuId")) ledger.setTbMenuId(request.get("tbMenuId") != null ? Integer.parseInt(request.get("tbMenuId").toString()) : null);
+        if (request.containsKey("serialNumber")) ledger.setSerialNumber(request.get("serialNumber") != null ? Integer.parseInt(request.get("serialNumber").toString()) : null);
+        if (request.containsKey("formula")) ledger.setFormula((String) request.get("formula"));
+        if (request.containsKey("depreciationLedgerId")) ledger.setDepreciationLedgerId(request.get("depreciationLedgerId") != null ? Integer.parseInt(request.get("depreciationLedgerId").toString()) : null);
+        if (request.containsKey("accumulatedDepreciationId")) ledger.setAccumulatedDepreciationId(request.get("accumulatedDepreciationId") != null ? Integer.parseInt(request.get("accumulatedDepreciationId").toString()) : null);
+        if (request.containsKey("fsaAreaId")) ledger.setFsaAreaId(request.get("fsaAreaId") != null ? Short.parseShort(request.get("fsaAreaId").toString()) : null);
+        if (request.containsKey("createdDate")) {
+            Object val = request.get("createdDate");
+            if (val != null) {
+                try {
+                    ledger.setCreatedDate(Timestamp.valueOf(val.toString().replace("T", " ").replace("Z", "")));
+                } catch (Exception e) {
+                    // ignore parse error
+                }
+            }
+        }
+        // Always update updatedDate to now
+        ledger.setUpdatedDate(new Timestamp(System.currentTimeMillis()));
+        // Save
+        ledgerRepository.save(ledger);
+        return true;
+    }
 }

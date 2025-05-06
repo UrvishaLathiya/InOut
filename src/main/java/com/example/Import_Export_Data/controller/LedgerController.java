@@ -33,34 +33,19 @@ public class LedgerController {
 
     @PostMapping("/api/ledger/update")
     @ResponseBody
-    public ResponseEntity<?> updateLedgerField(@RequestBody Map<String, String> request) {
+    public ResponseEntity<?> updateLedger(@RequestBody Map<String, Object> request) {
         System.out.println("Received update request: " + request);
         try {
-            if (request.get("id") == null || request.get("column") == null || request.get("value") == null) {
-                System.out.println("Missing required fields in request");
-                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Missing required fields"));
+            if (request.get("id") == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Missing id"));
             }
-
-            Integer id = Integer.parseInt(request.get("id"));
-            String column = request.get("column");
-            String value = request.get("value");
-
-            System.out.println("Processing update - ID: " + id + ", Column: " + column + ", Value: " + value);
-            boolean success = ledgerService.updateLedgerField(id, column, value);
-            
+            boolean success = ledgerService.updateLedger(request);
             if (success) {
-                System.out.println("Update successful");
                 return ResponseEntity.ok().body(Map.of("success", true));
             } else {
-                System.out.println("Update failed - invalid column or value");
-                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Failed to update ledger - invalid column or value"));
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Failed to update ledger"));
             }
-        } catch (NumberFormatException e) {
-            System.out.println("Invalid ID format: " + e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid ID format"));
         } catch (Exception e) {
-            System.out.println("Unexpected error: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         }
     }

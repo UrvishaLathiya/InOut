@@ -13,16 +13,16 @@ public class Ledger {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "created_date", nullable = false)
+    @Column(name = "created_date")
     private Timestamp createdDate;
 
-    @Column(name = "is_active", nullable = false)
+    @Column(name = "is_active")
     private Boolean isActive;
 
-    @Column(name = "is_deleted", nullable = false)
+    @Column(name = "is_deleted")
     private Boolean isDeleted;
 
-    @Column(name = "updated_date", nullable = false)
+    @Column(name = "updated_date")
     private Timestamp updatedDate;
 
     @Column(name = "version")
@@ -43,10 +43,10 @@ public class Ledger {
     @Column(name = "ledger_name", length = 256)
     private String ledgerName;
 
-    @Column(name = "created_by", nullable = false)
+    @Column(name = "created_by")
     private Integer createdBy;
 
-    @Column(name = "updated_by", nullable = false)
+    @Column(name = "updated_by")
     private Integer updatedBy;
 
     @Column(name = "ledger_type_id")
@@ -73,10 +73,10 @@ public class Ledger {
     @Column(name = "accumulated_depreciation_id")
     private Integer accumulatedDepreciationId;
 
-    @Column(name = "is_optional", nullable = false)
+    @Column(name = "is_optional")
     private Boolean isOptional;
 
-    @Column(name = "ap_version", nullable = false)
+    @Column(name = "ap_version")
     private Integer apVersion;
 
     @Column(name = "fsa_area_id")
