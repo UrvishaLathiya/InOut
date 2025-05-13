@@ -28,4 +28,10 @@ public interface LedgerRepository extends JpaRepository<Ledger,Integer> {
 
     @Query("SELECT l FROM Ledger l WHERE l.ledgerName = :ledgerName AND l.version = :version AND l.apVersion = :apVersion")
     Optional<Ledger> findByLedgerNameAndVersionAndApVersion(String ledgerName, Integer version, Integer apVersion);
+
+    @Query("SELECT l FROM Ledger l WHERE l.isGroup = true ORDER BY l.ledgerName")
+    List<Ledger> findAllGroups();
+
+    @Query("SELECT l FROM Ledger l WHERE l.isSubGroup = true ORDER BY l.ledgerName")
+    List<Ledger> findAllSubGroups();
 }

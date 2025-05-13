@@ -21,13 +21,11 @@ public class LedgerController {
     }
 
     @GetMapping("/ledgers")
-    public String getAllLedgers(Model model){
-        List<FullLedgerInfoDTO> ledgers = ledgerService.getAllLedger();
-        List<String> apVersions = ledgerService.getDistinctApVersions();
-
-        model.addAttribute("ledgers", ledgers);
-        model.addAttribute("apVersions", apVersions);
-
+    public String getLedgerPage(Model model) {
+        model.addAttribute("ledgers", ledgerService.getAllLedger());
+        model.addAttribute("apVersions", ledgerService.getDistinctApVersions());
+        model.addAttribute("groups", ledgerService.getAllGroups());
+        model.addAttribute("subgroups", ledgerService.getAllSubGroups());
         return "ledgerData";
     }
 

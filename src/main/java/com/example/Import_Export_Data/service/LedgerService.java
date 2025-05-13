@@ -45,6 +45,14 @@ public class LedgerService {
         return ledgerRepository.findDistinctApVersions();
     }
 
+    public List<Ledger> getAllGroups() {
+        return ledgerRepository.findAllGroups();
+    }
+
+    public List<Ledger> getAllSubGroups() {
+        return ledgerRepository.findAllSubGroups();
+    }
+
     @Transactional
     public boolean updateLedgerField(Integer id, String columnName, String value) {
         System.out.println("Attempting to update ledger - ID: " + id + ", Column: " + columnName + ", Value: " + value);
